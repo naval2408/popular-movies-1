@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Popular Movies</string>
+    <string name="error_message">Error has occurred. Please try again</string>
+    <string name="popular">Sort By : Popularity</string>
+    <string name="rated">Sort By : Rating</string>
+    <string name="refresh">Refresh</string>
+
+</resources>
