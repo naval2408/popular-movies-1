@@ -4,5 +4,9 @@
     <string name="popular">Sort By : Popularity</string>
     <string name="rated">Sort By : Rating</string>
     <string name="refresh">Refresh</string>
-
+    <string name="add_favourite">Add As A Favourite</string>
+    <string name="trailer_title">Trailers</string>
+    <string name="reviews_title">Reviews</string>
+    <string name="no_trailers">No Trailers present for the given movie</string>
+    <string name="no_reviews">No Reviews present for the given movie</string>
 </resources>

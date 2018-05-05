@@ -11,7 +11,7 @@ import java.util.ArrayList;
  * Created by navalkishore on 28/03/18.
  */
 
-public class Movies implements Serializable{
+public class Movies implements Serializable {
     private final String VOTE_COUNT="vote_count";
     private final String ID="id";
     private final String VIDEO="video";

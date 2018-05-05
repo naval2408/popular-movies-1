@@ -1,61 +1,61 @@
 package com.example.android.popularmovies;
-
+import android.app.LoaderManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.GridLayoutManager;
-import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.GridLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-
 import com.example.android.popularmovies.moviesDb.Movies;
 import com.example.android.popularmovies.utilities.MoviesDbJsonUtlis;
 import com.example.android.popularmovies.utilities.NetworkUtils;
-
+import android.support.v4.content.AsyncTaskLoader;
+import android.support.v4.content.Loader;
 import org.json.JSONObject;
 
 import java.net.URL;
 import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity implements MoviesAdapter.MoviesAdapterOnClickHandler{
+import butterknife.BindView;
+import butterknife.ButterKnife;
+
+
+public class MainActivity extends AppCompatActivity implements MoviesAdapter.MoviesAdapterOnClickHandler,android.support.v4.app.LoaderManager.LoaderCallbacks<ArrayList<Movies>> {
     private static final String TAG = MainActivity.class.getSimpleName();
-    private RecyclerView mRecyclerView;
-    private TextView mErrorMessageDisplay;
-    private ProgressBar mLoadingIndicator;
+    @BindView(R.id.recyclerview_movie_display)
+    RecyclerView mRecyclerView;
+    @BindView(R.id.tv_error_message_display)
+     TextView mErrorMessageDisplay;
+    @BindView(R.id.pb_loading_indicator)
+     ProgressBar mLoadingIndicator;
     private MoviesAdapter mMoviesAdapter;
-    private String placeholderForLastCall;
     private final String POPULAR_PARAMETER="/popular";
     private final String TOP_RATED_PARAMETER="/top_rated";
+    private final String SORT_ORDER_KEY="sortOrder";
+    private final int MOVIES_LOADER_ID=10;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_moviesthumbnail);
-        mRecyclerView=(RecyclerView)findViewById(R.id.recyclerview_movie_display);
-        mErrorMessageDisplay=(TextView)findViewById(R.id.tv_error_message_display);
-        GridLayoutManager layoutManager= new GridLayoutManager(this,2,GridLayoutManager.VERTICAL,false);
-        mLoadingIndicator=(ProgressBar)findViewById(R.id.pb_loading_indicator);
-        mRecyclerView.setLayoutManager(layoutManager);
+        ButterKnife.bind(this);
+        GridLayoutManager layoutManager= new GridLayoutManager(this,2,GridLayoutManager.VERTICAL,false);        mRecyclerView.setLayoutManager(layoutManager);
         mRecyclerView.setHasFixedSize(true);
         mMoviesAdapter= new MoviesAdapter(this);
         mRecyclerView.setAdapter(mMoviesAdapter);
-        loadMovieData("/popular");
+        int loaderId = MOVIES_LOADER_ID;
+        android.support.v4.app.LoaderManager.LoaderCallbacks<ArrayList<Movies>> callback = MainActivity.this;
+        Bundle bundleForLoader = new Bundle();
+        bundleForLoader.putString(SORT_ORDER_KEY,POPULAR_PARAMETER);
+        getSupportLoaderManager().initLoader(loaderId, bundleForLoader, callback);
 
-    }
-
-    private void loadMovieData(String queryParameter) {
-
-        showMoviesDataView();
-        new FetchMoviesTask().execute(queryParameter);
-        placeholderForLastCall=queryParameter;
     }
 
     @Override
@@ -68,47 +68,67 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Mov
 
     }
 
-    public class FetchMoviesTask extends AsyncTask<String,Void,ArrayList<Movies>>
+
+
+    public android.support.v4.content.Loader<ArrayList<Movies>> onCreateLoader(int id, final Bundle loaderArgs)
     {
-
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            mLoadingIndicator.setVisibility(View.VISIBLE);
-        }
-
-        @Override
-        protected ArrayList<Movies> doInBackground(String... params) {
-            if (params.length == 0) {
-                return null;
+        return new AsyncTaskLoader<ArrayList<Movies>>(this) {
+            ArrayList<Movies> mMovieslist=null;
+            @Override
+            protected void onStartLoading() {
+                if (mMovieslist != null) {
+                    deliverResult(mMovieslist);
+                } else {
+                    mLoadingIndicator.setVisibility(View.VISIBLE);
+                    forceLoad();
+                }
             }
 
-            String sortOrder = params[0];
-            URL moviesRequestUrl = NetworkUtils.buildURL(sortOrder);
-            try {
-                String jsonMovieResponse = NetworkUtils
-                        .getResponseFromHttpUrl(moviesRequestUrl);
+            @Override
+            public ArrayList<Movies> loadInBackground() {
+                String sortOrder = loaderArgs.get(SORT_ORDER_KEY).toString();
+                URL moviesRequestUrl = NetworkUtils.buildURL(sortOrder);
+                try {
+                    String jsonMovieResponse = NetworkUtils
+                            .getResponseFromHttpUrl(moviesRequestUrl);
 
-                ArrayList<Movies> moviesList = MoviesDbJsonUtlis.getMoviesObjectFromJson(MainActivity.this,new JSONObject(jsonMovieResponse));
-                return moviesList;
+                    ArrayList<Movies> moviesList = MoviesDbJsonUtlis.getMoviesObjectFromJson(MainActivity.this,new JSONObject(jsonMovieResponse));
+                    return moviesList;
 
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return null;
+                }
             }
 
-        }
-        protected void onPostExecute(ArrayList<Movies> moviesData) {
-            mLoadingIndicator.setVisibility(View.INVISIBLE);
-            if (moviesData != null) {
-                showMoviesDataView();
-                mMoviesAdapter.setMoviesData(moviesData);
-            } else {
-                showErrorMessage();
+            @Override
+            public void deliverResult(ArrayList<Movies> data) {
+                mMovieslist=data;
+                super.deliverResult(data);
             }
         }
+            ;
+
+
+
+
+    }
+    @Override
+    public void onLoadFinished(Loader<ArrayList<Movies>> loader, ArrayList<Movies> moviesList) {
+        mLoadingIndicator.setVisibility(View.INVISIBLE);
+        mMoviesAdapter.setMoviesData(moviesList);
+        if (null == moviesList) {
+            showErrorMessage();
+        } else {
+            showMoviesDataView();
+        }
+
     }
 
+    @Override
+    public void onLoaderReset(Loader<ArrayList<Movies>> loader) {
+
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -123,20 +143,26 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Mov
 
         if (id == R.id.action_refresh) {
             mMoviesAdapter.setMoviesData(null);
-            loadMovieData(placeholderForLastCall);
+            Bundle bundle = new Bundle();
+            bundle.putString(SORT_ORDER_KEY,POPULAR_PARAMETER);
+            getSupportLoaderManager().restartLoader(MOVIES_LOADER_ID, bundle, this);
             return true;
         }
 
 
         if (id == R.id.most_popular) {
             mMoviesAdapter.setMoviesData(null);
-            loadMovieData(POPULAR_PARAMETER);
+            Bundle bundle = new Bundle();
+            bundle.putString(SORT_ORDER_KEY,POPULAR_PARAMETER);
+            getSupportLoaderManager().restartLoader(MOVIES_LOADER_ID, bundle, this);
             return true;
         }
 
         if (id == R.id.top_rated) {
             mMoviesAdapter.setMoviesData(null);
-            loadMovieData(TOP_RATED_PARAMETER);
+            Bundle bundle = new Bundle();
+            bundle.putString(SORT_ORDER_KEY,TOP_RATED_PARAMETER);
+            getSupportLoaderManager().restartLoader(MOVIES_LOADER_ID, bundle, this);
             return true;
         }
 
