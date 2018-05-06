@@ -1,6 +1,8 @@
 package com.example.android.popularmovies.utilities;
 
 import android.content.Context;
+import android.database.Cursor;
+import android.graphics.Movie;
 
 import com.example.android.popularmovies.moviesDb.Movies;
 
@@ -37,6 +39,23 @@ public class MoviesDbJsonUtlis {
         }
         return  parsedMovieObjects;
 
+    }
+
+    public static ArrayList<Movies> getMoviesObjectFromCursor(Context context,Cursor movieCursor)
+    {
+        ArrayList<Movies> parsedMovieObjects = new ArrayList<Movies>();
+        if(movieCursor==null||movieCursor.getCount()==0)
+        {
+            return parsedMovieObjects;
+        }
+
+        for (movieCursor.moveToFirst(); !movieCursor.isAfterLast(); movieCursor.moveToNext()) {
+            Movies movie = new Movies(movieCursor);
+            parsedMovieObjects.add(movie);
+
+        }
+        movieCursor.close();
+    return parsedMovieObjects;
     }
 
 

@@ -98,6 +98,10 @@ public class MovieDetail extends AppCompatActivity implements TrailersAdapter.Tr
 
             }
         }
+        if(inputMovieObject.isFromDb())
+        {
+            mAddfavourite.setVisibility(View.INVISIBLE);
+        }
         pref= PreferenceManager.getDefaultSharedPreferences(this);
         editor=pref.edit();
         if(pref.getBoolean(getString(R.string.favorites_key)+inputMovieObject.getIdValue(),false))
@@ -301,8 +305,12 @@ public class MovieDetail extends AppCompatActivity implements TrailersAdapter.Tr
          editor.apply();
          setButtonText();
          ContentValues contentValues = new ContentValues();
+         contentValues.put(FavouriteContract.FavouriteEntry.COLUMN_VOTE_AVERAGE, Double.toString(inputMovieObject.getVoteAverageValue()));
+         contentValues.put(FavouriteContract.FavouriteEntry.COLUMN_RELEASE_DATE, inputMovieObject.getReleaseDateValue());
+         contentValues.put(FavouriteContract.FavouriteEntry.COLUMN_POSTER_PATH, inputMovieObject.getPosterPathValue());
+         contentValues.put(FavouriteContract.FavouriteEntry.COLUMN_OVERVIEW, inputMovieObject.getOverviewValue());
          contentValues.put(FavouriteContract.FavouriteEntry.COLUMN_ID, Integer.toString(inputMovieObject.getIdValue()));
-         contentValues.put(FavouriteContract.FavouriteEntry.COLUMN_TITLE, inputMovieObject.getTitleValue());
+         contentValues.put(FavouriteContract.FavouriteEntry.COLUMN_TITLE, inputMovieObject.getOriginalTitleValue());
          Uri uri = getContentResolver().insert(FavouriteContract.FavouriteEntry.FAVOURITES_URI, contentValues);
          if(uri != null) {
              Toast.makeText(getBaseContext(), "Successfully added as favourites !", Toast.LENGTH_LONG).show();
@@ -310,13 +318,23 @@ public class MovieDetail extends AppCompatActivity implements TrailersAdapter.Tr
      }
      else
      {
-         Toast.makeText(this,"Already added as favourite !",Toast.LENGTH_SHORT).show();
+         editor.putBoolean(getString(R.string.favorites_key)+inputMovieObject.getIdValue(),false);
+         editor.apply();
+         setButtonDefaultText();
+         String stringId = Integer.toString(inputMovieObject.getIdValue());
+         Uri uri = FavouriteContract.FavouriteEntry.FAVOURITES_URI;
+         uri = uri.buildUpon().appendPath(stringId).build();
+         getContentResolver().delete(uri, null, null);
+         Toast.makeText(getBaseContext(), "Removed from favourites", Toast.LENGTH_LONG).show();
      }
 
 
  }
     private void setButtonText() {
-        mAddfavourite.setText("Added as Favourite !");
+        mAddfavourite.setText(getString(R.string.added_as_favourite));
+    }
+    private void setButtonDefaultText() {
+        mAddfavourite.setText(getString(R.string.add_favourite));
     }
 
 

@@ -1,4 +1,5 @@
 package com.example.android.popularmovies;
+
 import android.app.LoaderManager;
 import android.content.Context;
 import android.content.Intent;
@@ -24,6 +25,7 @@ import com.facebook.stetho.Stetho;
 
 import android.support.v4.content.AsyncTaskLoader;
 import android.support.v4.content.Loader;
+
 import org.json.JSONObject;
 
 import java.net.URL;
@@ -36,24 +38,22 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 
 
-public class MainActivity extends AppCompatActivity implements MoviesAdapter.MoviesAdapterOnClickHandler,android.support.v4.app.LoaderManager.LoaderCallbacks<ArrayList<Movies>> {
+public class MainActivity extends AppCompatActivity implements MoviesAdapter.MoviesAdapterOnClickHandler, android.support.v4.app.LoaderManager.LoaderCallbacks<ArrayList<Movies>> {
     private static final String TAG = MainActivity.class.getSimpleName();
     @BindView(R.id.recyclerview_movie_display)
     RecyclerView mRecyclerView;
     @BindView(R.id.tv_error_message_display)
-     TextView mErrorMessageDisplay;
+    TextView mErrorMessageDisplay;
     @BindView(R.id.pb_loading_indicator)
-     ProgressBar mLoadingIndicator;
+    ProgressBar mLoadingIndicator;
     @BindView(R.id.tv_no_movie_available)
     TextView mNoMovieAvailable;
     private MoviesAdapter mMoviesAdapter;
-    private final String POPULAR_PARAMETER="/popular";
-    private final String TOP_RATED_PARAMETER="/top_rated";
-    private final String SORT_ORDER_KEY="sortOrder";
-    private final String FAVOURITE_PARAMETER="favourite";
-    private final int MOVIES_LOADER_ID=10;
-    private ArrayList<Movies> listOfPopularMovies;
-    private ArrayList<Movies> listOfRatedMovies;
+    private final String POPULAR_PARAMETER = "/popular";
+    private final String TOP_RATED_PARAMETER = "/top_rated";
+    private final String SORT_ORDER_KEY = "sortOrder";
+    private final String FAVOURITE_PARAMETER = "favourite";
+    private final int MOVIES_LOADER_ID = 10;
 
 
 
@@ -63,15 +63,17 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Mov
         setContentView(R.layout.activity_moviesthumbnail);
         ButterKnife.bind(this);
         Stetho.initializeWithDefaults(this);
-        GridLayoutManager layoutManager= new GridLayoutManager(this,2,GridLayoutManager.VERTICAL,false);        mRecyclerView.setLayoutManager(layoutManager);
+        GridLayoutManager layoutManager = new GridLayoutManager(this, 2, GridLayoutManager.VERTICAL, false);
+        mRecyclerView.setLayoutManager(layoutManager);
         mRecyclerView.setHasFixedSize(true);
-        mMoviesAdapter= new MoviesAdapter(this);
+        mMoviesAdapter = new MoviesAdapter(this);
         mRecyclerView.setAdapter(mMoviesAdapter);
         int loaderId = MOVIES_LOADER_ID;
         android.support.v4.app.LoaderManager.LoaderCallbacks<ArrayList<Movies>> callback = MainActivity.this;
         Bundle bundleForLoader = new Bundle();
         bundleForLoader.putString(SORT_ORDER_KEY,POPULAR_PARAMETER);
         getSupportLoaderManager().initLoader(loaderId, bundleForLoader, callback);
+
 
 
     }
@@ -81,17 +83,16 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Mov
         Context context = this;
         Class destinationClass = MovieDetail.class;
         Intent intentToStartDetailActivity = new Intent(context, destinationClass);
-        intentToStartDetailActivity.putExtra("INPUT_MOVIES_OBJECT",movieSelected);
+        intentToStartDetailActivity.putExtra("INPUT_MOVIES_OBJECT", movieSelected);
         startActivity(intentToStartDetailActivity);
 
     }
 
 
-
-    public android.support.v4.content.Loader<ArrayList<Movies>> onCreateLoader(int id, final Bundle loaderArgs)
-    {
+    public android.support.v4.content.Loader<ArrayList<Movies>> onCreateLoader(int id, final Bundle loaderArgs) {
         return new AsyncTaskLoader<ArrayList<Movies>>(this) {
-            ArrayList<Movies> mMovieslist=null;
+            ArrayList<Movies> mMovieslist = null;
+
             @Override
             protected void onStartLoading() {
                 if (mMovieslist != null) {
@@ -105,79 +106,54 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Mov
             @Override
             public ArrayList<Movies> loadInBackground() {
                 String sortOrder = loaderArgs.get(SORT_ORDER_KEY).toString();
-                if(!sortOrder.equals(FAVOURITE_PARAMETER)) {
+                if (!sortOrder.equals(FAVOURITE_PARAMETER)) {
                     URL moviesRequestUrl = NetworkUtils.buildURL(sortOrder);
                     try {
                         String jsonMovieResponse = NetworkUtils
                                 .getResponseFromHttpUrl(moviesRequestUrl);
 
                         ArrayList<Movies> moviesList = MoviesDbJsonUtlis.getMoviesObjectFromJson(MainActivity.this, new JSONObject(jsonMovieResponse));
-                        if (sortOrder.equals(POPULAR_PARAMETER)) {
-                            listOfPopularMovies = moviesList;
-                        } else if (sortOrder.equals(TOP_RATED_PARAMETER)) {
-                            listOfRatedMovies = moviesList;
-                        }
                         return moviesList;
 
                     } catch (Exception e) {
                         e.printStackTrace();
                         return null;
                     }
-                }
-                else
-                {
-                    if(listOfRatedMovies==null)
-                    {
-                        sortOrder= TOP_RATED_PARAMETER;
-                        URL moviesRequestUrl = NetworkUtils.buildURL(sortOrder);
-                        try {
-                            String jsonMovieResponse = NetworkUtils
-                                    .getResponseFromHttpUrl(moviesRequestUrl);
+                } else {
 
-                            ArrayList<Movies> moviesList = MoviesDbJsonUtlis.getMoviesObjectFromJson(MainActivity.this, new JSONObject(jsonMovieResponse));
+                    Cursor cursor = getContentResolver().query(FavouriteContract.FavouriteEntry.FAVOURITES_URI,
+                            null,
+                            null,
+                            null,
+                            FavouriteContract.FavouriteEntry.COLUMN_ID);
 
-                                listOfRatedMovies = moviesList;
+                    ArrayList<Movies> moviesList = MoviesDbJsonUtlis.getMoviesObjectFromCursor(MainActivity.this, cursor);
+                    return moviesList;
 
-
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            return null;
-                        }
-
-
-
-
-                    }
-                    ArrayList<Movies> combinedList=getMoviesListFromDb();
-                    return combinedList;
 
                 }
             }
 
             @Override
             public void deliverResult(ArrayList<Movies> data) {
-                mMovieslist=data;
+                mMovieslist = data;
                 super.deliverResult(data);
             }
         }
-            ;
-
-
+                ;
 
 
     }
+
     @Override
     public void onLoadFinished(Loader<ArrayList<Movies>> loader, ArrayList<Movies> moviesList) {
         mLoadingIndicator.setVisibility(View.INVISIBLE);
         mMoviesAdapter.setMoviesData(moviesList);
         if (null == moviesList) {
             showErrorMessage();
-        }
-        else if(moviesList.size()==0) {
+        } else if (moviesList.size() == 0) {
             showNoMovieAvailableMessage();
-        }
-        else
-         {
+        } else {
             showMoviesDataView();
         }
 
@@ -230,11 +206,24 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Mov
             Bundle bundle = new Bundle();
             bundle.putString(SORT_ORDER_KEY,FAVOURITE_PARAMETER);
             getSupportLoaderManager().restartLoader(MOVIES_LOADER_ID, bundle, this);
-
+        return true;
 
         }
 
         return super.onOptionsItemSelected(item);
+
+    }
+
+
+
+    private void showErrorMessage() {
+        mRecyclerView.setVisibility(View.INVISIBLE);
+        mErrorMessageDisplay.setVisibility(View.VISIBLE);
+    }
+
+    private void showNoMovieAvailableMessage() {
+        mRecyclerView.setVisibility(View.INVISIBLE);
+        mNoMovieAvailable.setVisibility(View.VISIBLE);
     }
     private void showMoviesDataView() {
         mNoMovieAvailable.setVisibility(View.INVISIBLE);
@@ -242,65 +231,6 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Mov
         mRecyclerView.setVisibility(View.VISIBLE);
 
     }
-    private void showErrorMessage() {
-        mRecyclerView.setVisibility(View.INVISIBLE);
-        mErrorMessageDisplay.setVisibility(View.VISIBLE);
-    }
 
-    private ArrayList<Movies> getMoviesListFromDb()
-    {
-        ArrayList<Movies> movieListFromDb= new ArrayList<Movies>();
-        try {
-            Cursor cursor = getContentResolver().query(FavouriteContract.FavouriteEntry.FAVOURITES_URI,
-                    null,
-                    null,
-                    null,
-                    FavouriteContract.FavouriteEntry.COLUMN_ID);
-            if(cursor==null)
-            {
-                return movieListFromDb;
-
-            }
-           int[] idValueFromTable = new int[cursor.getCount()];
-            for(int i=0;i<idValueFromTable.length;i++)
-            {
-                int idIndex = cursor.getColumnIndex(FavouriteContract.FavouriteEntry.COLUMN_ID);
-                cursor.moveToPosition(i);
-                idValueFromTable[i]= Integer.parseInt(cursor.getString(idIndex));
-            }
-
-            HashMap<Integer,Movies> mapOfMoviesFromArrayList = new HashMap<Integer,Movies>();
-            ArrayList<Movies> combinedArrayList = new ArrayList<Movies>(listOfPopularMovies);
-            combinedArrayList.addAll(listOfRatedMovies);
-            for(Movies movie: combinedArrayList)
-            {
-             mapOfMoviesFromArrayList.put(movie.getIdValue(),movie);
-            }
-            for(int i=0; i<idValueFromTable.length;i++)
-            {
-                int placeHolderMovieId = idValueFromTable[i];
-               if(mapOfMoviesFromArrayList.containsKey(placeHolderMovieId))
-               {
-                   movieListFromDb.add(mapOfMoviesFromArrayList.get(placeHolderMovieId));
-               }
-            }
-
-
-            return movieListFromDb;
-
-
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-            return movieListFromDb;
-
-        }
-
-    }
-    private void showNoMovieAvailableMessage() {
-        mRecyclerView.setVisibility(View.INVISIBLE);
-        mNoMovieAvailable.setVisibility(View.VISIBLE);
-    }
 
 }

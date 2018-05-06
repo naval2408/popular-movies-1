@@ -12,4 +12,5 @@
     <string name="favorites">Sort By : Favorites</string>
     <string name="favorites_key" translatable="false">favoriteKey</string>
     <string name="no_available">No movies available this time ! </string>
+    <string name="added_as_favourite">Remove From Favourites </string>
 </resources>

@@ -14,6 +14,10 @@ public class FavouriteDbHelper extends SQLiteOpenHelper{
     public void onCreate(SQLiteDatabase sqLiteDatabase) {
         final String SQL_CREATE_FAVOURITE_TABLE = "CREATE TABLE "  + FavouriteContract.FavouriteEntry.TABLE_NAME + " (" +
                 FavouriteContract.FavouriteEntry._ID                + " INTEGER PRIMARY KEY, " +
+                FavouriteContract.FavouriteEntry.COLUMN_VOTE_AVERAGE + " TEXT NOT NULL, " +
+                FavouriteContract.FavouriteEntry.COLUMN_RELEASE_DATE + " TEXT NOT NULL, " +
+                FavouriteContract.FavouriteEntry.COLUMN_POSTER_PATH + " TEXT NOT NULL, " +
+                FavouriteContract.FavouriteEntry.COLUMN_OVERVIEW + " TEXT NOT NULL, " +
                 FavouriteContract.FavouriteEntry.COLUMN_ID + " TEXT NOT NULL, " +
                 FavouriteContract.FavouriteEntry.COLUMN_TITLE    + " TEXT NOT NULL);";
 

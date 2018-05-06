@@ -1,5 +1,9 @@
 package com.example.android.popularmovies.moviesDb;
 
+import android.database.Cursor;
+
+import com.example.android.popularmovies.data.FavouriteContract;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -26,6 +30,11 @@ public class Movies implements Serializable {
     private final String ADULT="adult";
     private final String OVERVIEW ="overview";
     private final String RELEASE_DATE="release_date";
+
+
+
+
+    private boolean isFromDb;
     private int voteCountValue;
     private int idValue;
     private boolean videoValue;
@@ -44,6 +53,7 @@ public class Movies implements Serializable {
     public Movies(JSONObject moviesJson)
     {
         try {
+            isFromDb=false;
             voteCountValue=moviesJson.getInt(VOTE_COUNT);
             idValue=moviesJson.getInt(ID);
             videoValue=moviesJson.getBoolean(VIDEO);
@@ -66,6 +76,23 @@ public class Movies implements Serializable {
         } catch (JSONException e) {
             e.printStackTrace();
         }
+    }
+
+    public Movies(Cursor cursor)
+    {
+        isFromDb=true;
+        int idIndex = cursor.getColumnIndex(FavouriteContract.FavouriteEntry.COLUMN_ID);
+        int titleIndex = cursor.getColumnIndex(FavouriteContract.FavouriteEntry.COLUMN_TITLE);
+        int voteAverageIndex = cursor.getColumnIndex(FavouriteContract.FavouriteEntry.COLUMN_VOTE_AVERAGE);
+        int overviewIndex = cursor.getColumnIndex(FavouriteContract.FavouriteEntry.COLUMN_OVERVIEW);
+        int releaseDateIndex = cursor.getColumnIndex(FavouriteContract.FavouriteEntry.COLUMN_RELEASE_DATE);
+        int imagePathIndex= cursor.getColumnIndex(FavouriteContract.FavouriteEntry.COLUMN_POSTER_PATH);
+        idValue= Integer.parseInt(cursor.getString(idIndex));
+        originalTitleValue=cursor.getString(titleIndex);
+        voteAverageValue=Double.parseDouble(cursor.getString(voteAverageIndex));
+        overviewValue=cursor.getString(overviewIndex);
+        releaseDateValue=cursor.getString(releaseDateIndex);
+        posterPathValue=cursor.getString(imagePathIndex);
     }
 
     public int getVoteCountValue() {
@@ -123,4 +150,8 @@ public class Movies implements Serializable {
     public String getReleaseDateValue() {
         return releaseDateValue;
     }
+    public boolean isFromDb() {
+        return isFromDb;
+    }
+
 }

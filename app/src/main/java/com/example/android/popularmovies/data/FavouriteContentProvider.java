@@ -13,6 +13,7 @@ import android.support.annotation.Nullable;
 
 public class FavouriteContentProvider extends ContentProvider{
     public static final int FAVOURITES = 100;
+    public static final int FAVOURITES_WITH_ID = 101;
     private FavouriteDbHelper mFavouriteDbHelper;
     private static final UriMatcher sUriMatcher = buildUriMatcher();
 
@@ -22,6 +23,7 @@ public class FavouriteContentProvider extends ContentProvider{
         UriMatcher uriMatcher = new UriMatcher(UriMatcher.NO_MATCH);
 
         uriMatcher.addURI(FavouriteContract.AUTHORITY, FavouriteContract.PATH_FAVOURITES, FAVOURITES);
+        uriMatcher.addURI(FavouriteContract.AUTHORITY, FavouriteContract.PATH_FAVOURITES + "/#", FAVOURITES_WITH_ID);
         return uriMatcher;
     }
 
@@ -93,7 +95,32 @@ public class FavouriteContentProvider extends ContentProvider{
 
     @Override
     public int delete(@NonNull Uri uri, @Nullable String s, @Nullable String[] strings) {
-        return 0;
+        final SQLiteDatabase db = mFavouriteDbHelper.getWritableDatabase();
+
+        int match = sUriMatcher.match(uri);
+
+        int favouritesDeleted;
+        switch (match) {
+
+            case FAVOURITES_WITH_ID:
+
+                String id = uri.getPathSegments().get(1);
+
+                favouritesDeleted = db.delete(FavouriteContract.FavouriteEntry.TABLE_NAME, "moviesId=?", new String[]{id});
+                break;
+            default:
+                throw new UnsupportedOperationException("Unknown uri: " + uri);
+        }
+
+
+        if (favouritesDeleted != 0) {
+
+            getContext().getContentResolver().notifyChange(uri, null);
+
+        }
+
+
+        return favouritesDeleted;
     }
 
     @Override
