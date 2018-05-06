@@ -9,4 +9,7 @@
     <string name="reviews_title">Reviews</string>
     <string name="no_trailers">No Trailers present for the given movie</string>
     <string name="no_reviews">No Reviews present for the given movie</string>
+    <string name="favorites">Sort By : Favorites</string>
+    <string name="favorites_key" translatable="false">favoriteKey</string>
+    <string name="no_available">No movies available this time ! </string>
 </resources>

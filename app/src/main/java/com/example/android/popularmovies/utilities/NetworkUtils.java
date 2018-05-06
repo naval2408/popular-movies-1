@@ -22,7 +22,7 @@ public class NetworkUtils {
     private static final String REVIEWS_KEY_PARAMETER = "reviews";
     private static final String LANGUAGE_PARAMETER = "language";
     private static final String PAGE_PARAMETER = "page";
-    private static final String API_KEY_VALUE = "752bd95f687e24ab4e8ab60f4ec676db";//Insert key here
+    private static final String API_KEY_VALUE = "";//Insert key here
     private static final String LANGUAGE_VALUE = "en-US";
     private static final int PAGE_VALUE = 1;
 

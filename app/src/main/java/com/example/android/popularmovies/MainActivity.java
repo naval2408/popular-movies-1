@@ -2,6 +2,8 @@ package com.example.android.popularmovies;
 import android.app.LoaderManager;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.Movie;
 import android.os.AsyncTask;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -13,15 +15,22 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+
+import com.example.android.popularmovies.data.FavouriteContract;
 import com.example.android.popularmovies.moviesDb.Movies;
 import com.example.android.popularmovies.utilities.MoviesDbJsonUtlis;
 import com.example.android.popularmovies.utilities.NetworkUtils;
+import com.facebook.stetho.Stetho;
+
 import android.support.v4.content.AsyncTaskLoader;
 import android.support.v4.content.Loader;
 import org.json.JSONObject;
 
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -35,17 +44,25 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Mov
      TextView mErrorMessageDisplay;
     @BindView(R.id.pb_loading_indicator)
      ProgressBar mLoadingIndicator;
+    @BindView(R.id.tv_no_movie_available)
+    TextView mNoMovieAvailable;
     private MoviesAdapter mMoviesAdapter;
     private final String POPULAR_PARAMETER="/popular";
     private final String TOP_RATED_PARAMETER="/top_rated";
     private final String SORT_ORDER_KEY="sortOrder";
+    private final String FAVOURITE_PARAMETER="favourite";
     private final int MOVIES_LOADER_ID=10;
+    private ArrayList<Movies> listOfPopularMovies;
+    private ArrayList<Movies> listOfRatedMovies;
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_moviesthumbnail);
         ButterKnife.bind(this);
+        Stetho.initializeWithDefaults(this);
         GridLayoutManager layoutManager= new GridLayoutManager(this,2,GridLayoutManager.VERTICAL,false);        mRecyclerView.setLayoutManager(layoutManager);
         mRecyclerView.setHasFixedSize(true);
         mMoviesAdapter= new MoviesAdapter(this);
@@ -55,6 +72,7 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Mov
         Bundle bundleForLoader = new Bundle();
         bundleForLoader.putString(SORT_ORDER_KEY,POPULAR_PARAMETER);
         getSupportLoaderManager().initLoader(loaderId, bundleForLoader, callback);
+
 
     }
 
@@ -87,17 +105,52 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Mov
             @Override
             public ArrayList<Movies> loadInBackground() {
                 String sortOrder = loaderArgs.get(SORT_ORDER_KEY).toString();
-                URL moviesRequestUrl = NetworkUtils.buildURL(sortOrder);
-                try {
-                    String jsonMovieResponse = NetworkUtils
-                            .getResponseFromHttpUrl(moviesRequestUrl);
+                if(!sortOrder.equals(FAVOURITE_PARAMETER)) {
+                    URL moviesRequestUrl = NetworkUtils.buildURL(sortOrder);
+                    try {
+                        String jsonMovieResponse = NetworkUtils
+                                .getResponseFromHttpUrl(moviesRequestUrl);
 
-                    ArrayList<Movies> moviesList = MoviesDbJsonUtlis.getMoviesObjectFromJson(MainActivity.this,new JSONObject(jsonMovieResponse));
-                    return moviesList;
+                        ArrayList<Movies> moviesList = MoviesDbJsonUtlis.getMoviesObjectFromJson(MainActivity.this, new JSONObject(jsonMovieResponse));
+                        if (sortOrder.equals(POPULAR_PARAMETER)) {
+                            listOfPopularMovies = moviesList;
+                        } else if (sortOrder.equals(TOP_RATED_PARAMETER)) {
+                            listOfRatedMovies = moviesList;
+                        }
+                        return moviesList;
 
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    return null;
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        return null;
+                    }
+                }
+                else
+                {
+                    if(listOfRatedMovies==null)
+                    {
+                        sortOrder= TOP_RATED_PARAMETER;
+                        URL moviesRequestUrl = NetworkUtils.buildURL(sortOrder);
+                        try {
+                            String jsonMovieResponse = NetworkUtils
+                                    .getResponseFromHttpUrl(moviesRequestUrl);
+
+                            ArrayList<Movies> moviesList = MoviesDbJsonUtlis.getMoviesObjectFromJson(MainActivity.this, new JSONObject(jsonMovieResponse));
+
+                                listOfRatedMovies = moviesList;
+
+
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            return null;
+                        }
+
+
+
+
+                    }
+                    ArrayList<Movies> combinedList=getMoviesListFromDb();
+                    return combinedList;
+
                 }
             }
 
@@ -119,7 +172,12 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Mov
         mMoviesAdapter.setMoviesData(moviesList);
         if (null == moviesList) {
             showErrorMessage();
-        } else {
+        }
+        else if(moviesList.size()==0) {
+            showNoMovieAvailableMessage();
+        }
+        else
+         {
             showMoviesDataView();
         }
 
@@ -166,9 +224,20 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Mov
             return true;
         }
 
+        if(id==R.id.sort_by_favourites)
+        {
+            mMoviesAdapter.setMoviesData(null);
+            Bundle bundle = new Bundle();
+            bundle.putString(SORT_ORDER_KEY,FAVOURITE_PARAMETER);
+            getSupportLoaderManager().restartLoader(MOVIES_LOADER_ID, bundle, this);
+
+
+        }
+
         return super.onOptionsItemSelected(item);
     }
     private void showMoviesDataView() {
+        mNoMovieAvailable.setVisibility(View.INVISIBLE);
         mErrorMessageDisplay.setVisibility(View.INVISIBLE);
         mRecyclerView.setVisibility(View.VISIBLE);
 
@@ -176,6 +245,62 @@ public class MainActivity extends AppCompatActivity implements MoviesAdapter.Mov
     private void showErrorMessage() {
         mRecyclerView.setVisibility(View.INVISIBLE);
         mErrorMessageDisplay.setVisibility(View.VISIBLE);
+    }
+
+    private ArrayList<Movies> getMoviesListFromDb()
+    {
+        ArrayList<Movies> movieListFromDb= new ArrayList<Movies>();
+        try {
+            Cursor cursor = getContentResolver().query(FavouriteContract.FavouriteEntry.FAVOURITES_URI,
+                    null,
+                    null,
+                    null,
+                    FavouriteContract.FavouriteEntry.COLUMN_ID);
+            if(cursor==null)
+            {
+                return movieListFromDb;
+
+            }
+           int[] idValueFromTable = new int[cursor.getCount()];
+            for(int i=0;i<idValueFromTable.length;i++)
+            {
+                int idIndex = cursor.getColumnIndex(FavouriteContract.FavouriteEntry.COLUMN_ID);
+                cursor.moveToPosition(i);
+                idValueFromTable[i]= Integer.parseInt(cursor.getString(idIndex));
+            }
+
+            HashMap<Integer,Movies> mapOfMoviesFromArrayList = new HashMap<Integer,Movies>();
+            ArrayList<Movies> combinedArrayList = new ArrayList<Movies>(listOfPopularMovies);
+            combinedArrayList.addAll(listOfRatedMovies);
+            for(Movies movie: combinedArrayList)
+            {
+             mapOfMoviesFromArrayList.put(movie.getIdValue(),movie);
+            }
+            for(int i=0; i<idValueFromTable.length;i++)
+            {
+                int placeHolderMovieId = idValueFromTable[i];
+               if(mapOfMoviesFromArrayList.containsKey(placeHolderMovieId))
+               {
+                   movieListFromDb.add(mapOfMoviesFromArrayList.get(placeHolderMovieId));
+               }
+            }
+
+
+            return movieListFromDb;
+
+
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            return movieListFromDb;
+
+        }
+
+    }
+    private void showNoMovieAvailableMessage() {
+        mRecyclerView.setVisibility(View.INVISIBLE);
+        mNoMovieAvailable.setVisibility(View.VISIBLE);
     }
 
 }

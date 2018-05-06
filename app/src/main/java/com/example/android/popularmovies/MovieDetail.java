@@ -1,9 +1,13 @@
 package com.example.android.popularmovies;
 
 import android.content.ActivityNotFoundException;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.Parcelable;
+import android.preference.PreferenceManager;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.AsyncTaskLoader;
 import android.support.v4.content.Loader;
@@ -12,13 +16,18 @@ import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.method.ScrollingMovementMethod;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.Scroller;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.example.android.popularmovies.data.FavouriteContract;
 import com.example.android.popularmovies.moviesDb.Movies;
 import com.example.android.popularmovies.moviesDb.Reviews;
 import com.example.android.popularmovies.moviesDb.Trailers;
@@ -36,6 +45,7 @@ import java.util.ArrayList;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import butterknife.OnClick;
 
 public class MovieDetail extends AppCompatActivity implements TrailersAdapter.TralersAdapterOnClickHandler,LoaderManager.LoaderCallbacks<ArrayList<Trailers>>{
     Movies inputMovieObject = null;
@@ -69,6 +79,11 @@ public class MovieDetail extends AppCompatActivity implements TrailersAdapter.Tr
     private ReviewsAdapter reviewsAdapter;
     private final int TRAILER_LOADER_ID=20;
     private final int REVIEWS_LOADER_ID=30;
+    SharedPreferences pref;
+    SharedPreferences.Editor editor;
+    @BindView(R.id.button_add_favourite)
+    Button mAddfavourite;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,6 +98,13 @@ public class MovieDetail extends AppCompatActivity implements TrailersAdapter.Tr
 
             }
         }
+        pref= PreferenceManager.getDefaultSharedPreferences(this);
+        editor=pref.edit();
+        if(pref.getBoolean(getString(R.string.favorites_key)+inputMovieObject.getIdValue(),false))
+        {
+            setButtonText();
+        }
+
         Picasso.with(mImageView.getContext()).load("http://image.tmdb.org/t/p/w500/"+inputMovieObject.getPosterPathValue()).into(mImageView);
         mMovieTitle.setText(inputMovieObject.getOriginalTitleValue());
         mMovieRating.setText("User Rating : "+inputMovieObject.getVoteAverageValue()+"/10");
@@ -269,6 +291,35 @@ public class MovieDetail extends AppCompatActivity implements TrailersAdapter.Tr
     private void showNoReviewsView() {
         mNoReview.setVisibility(View.VISIBLE);
     }
+
+ @OnClick(R.id.button_add_favourite)
+ void onFavouritesClicked() {
+        boolean isFavorite = pref.getBoolean(getString(R.string.favorites_key)+inputMovieObject.getIdValue(),false);
+     if(!isFavorite)
+     {
+         editor.putBoolean(getString(R.string.favorites_key)+inputMovieObject.getIdValue(),true);
+         editor.apply();
+         setButtonText();
+         ContentValues contentValues = new ContentValues();
+         contentValues.put(FavouriteContract.FavouriteEntry.COLUMN_ID, Integer.toString(inputMovieObject.getIdValue()));
+         contentValues.put(FavouriteContract.FavouriteEntry.COLUMN_TITLE, inputMovieObject.getTitleValue());
+         Uri uri = getContentResolver().insert(FavouriteContract.FavouriteEntry.FAVOURITES_URI, contentValues);
+         if(uri != null) {
+             Toast.makeText(getBaseContext(), "Successfully added as favourites !", Toast.LENGTH_LONG).show();
+         }
+     }
+     else
+     {
+         Toast.makeText(this,"Already added as favourite !",Toast.LENGTH_SHORT).show();
+     }
+
+
+ }
+    private void setButtonText() {
+        mAddfavourite.setText("Added as Favourite !");
+    }
+
+
 
 }
 
